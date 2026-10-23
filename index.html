@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Memória do Cerrado</title>
+<style>
+  :root {
+    --capim: #e9c46a;
+    --capim-claro: #f6e3a8;
+    --laranja: #d9741f;
+    --marrom: #4a2c17;
+    --oliva: #5b6b2a;
+    --oliva-escuro: #3e4a1c;
+    --papel: #fff6dc;
+    color-scheme: light;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; min-height: 100%; }
+  body {
+    font-family: "Trebuchet MS", "Segoe UI", Verdana, sans-serif;
+    background: linear-gradient(180deg, var(--capim-claro) 0%, var(--capim) 100%);
+    color: var(--marrom);
+    padding: 16px;
+    padding-top: calc(16px + env(safe-area-inset-top, 0px));
+    padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+    font-size: 18px;
+  }
+  main { max-width: 760px; margin: 0 auto; }
+  h1 {
+    margin: 8px 0 4px;
+    text-align: center;
+    font-size: clamp(2rem, 7vw, 3.2rem);
+    color: var(--oliva-escuro);
+    letter-spacing: 0.5px;
+  }
+  .sub { text-align: center; margin: 0 0 16px; font-size: 1.05rem; }
+  .placar {
+    display: flex; justify-content: center; gap: 12px; flex-wrap: wrap;
+    margin-bottom: 16px;
+  }
+  .placar div {
+    background: var(--oliva);
+    color: #fff;
+    border-radius: 14px;
+    padding: 8px 20px;
+    font-size: 1.15rem;
+    font-weight: bold;
+    min-width: 130px;
+    text-align: center;
+  }
+  .grade {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+  }
+  @media (max-width: 520px) { .grade { grid-template-columns: repeat(3, 1fr); gap: 8px; } }
+  .carta {
+    aspect-ratio: 3 / 4;
+    perspective: 800px;
+    background: none; border: 0; padding: 0; cursor: pointer;
+    font: inherit; color: inherit;
+  }
+  .carta:focus-visible { outline: 4px solid var(--laranja); outline-offset: 3px; border-radius: 14px; }
+  .miolo {
+    position: relative; width: 100%; height: 100%;
+    transform-style: preserve-3d;
+    transition: transform 0.5s;
+  }
+  .carta.virada .miolo { transform: rotateY(180deg); }
+  .face {
+    position: absolute; inset: 0;
+    backface-visibility: hidden; -webkit-backface-visibility: hidden;
+    border-radius: 14px;
+    display: flex; align-items: center; justify-content: center;
+    text-align: center;
+    padding: 6px;
+  }
+  .costas {
+    background: var(--marrom);
+    border: 4px solid var(--laranja);
+    color: var(--capim);
+    font-size: 2.4rem;
+  }
+  .frente { transform: rotateY(180deg); border: 4px solid var(--oliva); background: var(--papel); }
+  .frente.imagem { font-size: clamp(2.6rem, 10vw, 4rem); }
+  .frente.nome {
+    font-size: clamp(0.9rem, 3.3vw, 1.2rem);
+    font-weight: bold; line-height: 1.2;
+    color: var(--oliva-escuro);
+  }
+  .carta.par .frente { background: #e5efc2; border-color: var(--oliva-escuro); }
+  .curiosidade {
+    margin: 16px 0 0;
+    min-height: 4.2em;
+    background: var(--papel);
+    border-left: 8px solid var(--laranja);
+    border-radius: 10px;
+    padding: 10px 14px;
+    font-size: 1.05rem;
+    line-height: 1.4;
+  }
+  .vitoria {
+    position: fixed; inset: 0;
+    background: rgba(62, 74, 28, 0.9);
+    display: none; align-items: center; justify-content: center;
+    padding: 20px; z-index: 10;
+  }
+  .vitoria.ativa { display: flex; }
+  .vitoria .caixa {
+    background: var(--papel);
+    border: 6px solid var(--laranja);
+    border-radius: 20px;
+    padding: 28px 24px;
+    max-width: 420px; width: 100%;
+    text-align: center;
+  }
+  .vitoria h2 { margin: 0 0 8px; font-size: 2rem; color: var(--oliva-escuro); }
+  .vitoria p { margin: 6px 0; font-size: 1.2rem; }
+  button.jogar {
+    margin-top: 16px;
+    background: var(--laranja); color: #fff;
+    border: 0; border-radius: 14px;
+    font: inherit; font-size: 1.2rem; font-weight: bold;
+    padding: 12px 28px; cursor: pointer;
+  }
+  button.jogar:hover { background: #b85f14; }
+  button.jogar:focus-visible { outline: 4px solid var(--oliva); outline-offset: 3px; }
+  .instrucao {
+    margin: 10px 0 0;
+    background: var(--oliva);
+    color: #fff;
+    border-radius: 10px;
+    padding: 10px 14px;
+    font-size: 1.1rem;
+    font-weight: bold;
+    text-align: center;
+  }
+  @media (prefers-reduced-motion: reduce) { .miolo { transition: none; } }
+</style>
+</head>
+<body>
+<main>
+  <h1>Memória do Cerrado</h1>
+  <p class="sub">Encontre a imagem e o nome que combinam.</p>
+
+  <div class="placar" aria-live="polite">
+    <div>Jogadas: <span id="jogadas">0</span></div>
+    <div>Tempo: <span id="tempo">0:00</span></div>
+  </div>
+
+  <div class="grade" id="grade"></div>
+  <p class="curiosidade" id="curiosidade" aria-live="polite">Vire duas cartas para começar.</p>
+  <p class="instrucao">📓 Faça as anotações das curiosidades no caderno.</p>
+</main>
+
+<div class="vitoria" id="vitoria" role="dialog" aria-modal="true" aria-labelledby="tituloVitoria">
+  <div class="caixa">
+    <h2 id="tituloVitoria">Você completou!</h2>
+    <p>Jogadas: <strong id="vJogadas"></strong></p>
+    <p>Tempo: <strong id="vTempo"></strong></p>
+    <button class="jogar" id="again">Jogar de novo</button>
+  </div>
+</div>
+
+<script>
+  const PARES = [
+    { id: 1, emoji: "🐺", nome: "Animal símbolo do Cerrado",
+      info: "O lobo-guará é o maior canídeo da América do Sul e adora comer lobeira, uma fruta do Cerrado." },
+    { id: 2, emoji: "🌳", nome: "Vegetação típica do Cerrado",
+      info: "As árvores têm troncos retorcidos e casca grossa, que ajudam a resistir à seca e ao fogo natural." },
+    { id: 3, emoji: "🥭", nome: "Fruto típico do Cerrado",
+      info: "O pequi é muito usado na culinária de Goiás, em pratos como o arroz com pequi." },
+    { id: 4, emoji: "💧", nome: "Berço das águas",
+      info: "Nascentes do Cerrado alimentam grandes bacias, como a do São Francisco e a do Tocantins-Araguaia." },
+    { id: 5, emoji: "🔥", nome: "Ameaça ao Cerrado",
+      info: "Queimadas provocadas pelo ser humano destroem a vegetação e ameaçam os animais." },
+    { id: 6, emoji: "🐜", nome: "Fauna do Cerrado",
+      info: "O tamanduá-bandeira não tem dentes e come milhares de formigas e cupins por dia." }
+  ];
+
+  const grade = document.getElementById("grade");
+  const elJogadas = document.getElementById("jogadas");
+  const elTempo = document.getElementById("tempo");
+  const elCuriosidade = document.getElementById("curiosidade");
+  const elVitoria = document.getElementById("vitoria");
+
+  let primeira = null, travado = false, jogadas = 0, acertos = 0;
+  let inicio = null, timer = null;
+
+  function embaralhar(lista) {
+    const a = lista.slice();
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  }
+
+  function formatar(seg) {
+    const m = Math.floor(seg / 60), s = seg % 60;
+    return m + ":" + String(s).padStart(2, "0");
+  }
+
+  function iniciarTimer() {
+    inicio = Date.now();
+    timer = setInterval(() => {
+      elTempo.textContent = formatar(Math.floor((Date.now() - inicio) / 1000));
+    }, 250);
+  }
+
+  function novoJogo() {
+    clearInterval(timer);
+    timer = null; inicio = null;
+    primeira = null; travado = false; jogadas = 0; acertos = 0;
+    elJogadas.textContent = "0";
+    elTempo.textContent = "0:00";
+    elCuriosidade.textContent = "Vire duas cartas para começar.";
+    elVitoria.classList.remove("ativa");
+    grade.innerHTML = "";
+
+    const cartas = [];
+    PARES.forEach(p => {
+      cartas.push({ par: p.id, tipo: "imagem", texto: p.emoji, rotulo: p.nome.replace(/^/, "Imagem: ") });
+      cartas.push({ par: p.id, tipo: "nome", texto: p.nome, rotulo: p.nome });
+    });
+
+    embaralhar(cartas).forEach(c => {
+      const b = document.createElement("button");
+      b.className = "carta";
+      b.type = "button";
+      b.dataset.par = c.par;
+      b.setAttribute("aria-label", "Carta virada para baixo");
+      b.innerHTML =
+        '<div class="miolo">' +
+          '<div class="face costas">🌾</div>' +
+          '<div class="face frente ' + c.tipo + '"></div>' +
+        '</div>';
+      b.querySelector(".frente").textContent = c.texto;
+      b.addEventListener("click", () => virar(b, c));
+      grade.appendChild(b);
+    });
+  }
+
+  function virar(el, c) {
+    if (travado || el.classList.contains("virada")) return;
+    if (!timer) iniciarTimer();
+
+    el.classList.add("virada");
+    el.setAttribute("aria-label", c.tipo === "imagem" ? "Imagem " + c.texto : c.texto);
+
+    if (!primeira) { primeira = el; return; }
+
+    jogadas++;
+    elJogadas.textContent = jogadas;
+    const segunda = el;
+
+    if (primeira.dataset.par === segunda.dataset.par) {
+      primeira.classList.add("par");
+      segunda.classList.add("par");
+      primeira.disabled = true; segunda.disabled = true;
+      const p = PARES.find(x => x.id === Number(segunda.dataset.par));
+      elCuriosidade.textContent = "💡 " + p.info;
+      primeira = null;
+      acertos++;
+      if (acertos === PARES.length) setTimeout(vencer, 900);
+    } else {
+      travado = true;
+      const a = primeira, b = segunda;
+      primeira = null;
+      elCuriosidade.textContent = "Não combinam. Tente de novo!";
+      setTimeout(() => {
+        a.classList.remove("virada"); b.classList.remove("virada");
+        a.setAttribute("aria-label", "Carta virada para baixo");
+        b.setAttribute("aria-label", "Carta virada para baixo");
+        travado = false;
+      }, 1000);
+    }
+  }
+
+  function vencer() {
+    clearInterval(timer);
+    const seg = Math.floor((Date.now() - inicio) / 1000);
+    document.getElementById("vJogadas").textContent = jogadas;
+    document.getElementById("vTempo").textContent = formatar(seg);
+    elVitoria.classList.add("ativa");
+    document.getElementById("again").focus();
+  }
+
+  document.getElementById("again").addEventListener("click", novoJogo);
+  novoJogo();
+</script>
+</body>
+</html>
